@@ -12,6 +12,7 @@ import {
   ListPartsCommand,
   S3Client,
   S3ClientConfig,
+  S3ServiceException,
   UploadPartCommand,
   UploadPartCopyCommand,
 } from '@aws-sdk/client-s3'
@@ -32,6 +33,7 @@ import { Readable } from 'node:stream'
 import { createAgent, InstrumentedAgent } from '@internal/http'
 import { monitorStream } from '@internal/streams'
 import { BackupObjectInfo, ObjectBackup } from '@storage/backend/s3/backup'
+import semaphore from 'p-limit'
 
 const { tracingFeatures, storageS3MaxSockets, tracingEnabled } = getConfig()
 
@@ -310,7 +312,34 @@ export class S3Backend implements StorageBackendAdapter {
           Objects: s3Prefixes,
         },
       })
-      await this.client.send(command)
+      try {
+        await this.client.send(command)
+      } catch (reason) {
+        // Google Cloud Storage doesn't support DeleteObjects so we must iterate and delete each
+        // object individually. This is how the @google-cloud/storage package works internally.
+        // https://github.com/googleapis/nodejs-storage/blob/v7.15.2/src/bucket.ts#L2121
+        if (reason instanceof S3ServiceException && reason.name === 'NotImplemented') {
+          const MAX_PARALLEL_LIMIT = 10
+          const MAX_QUEUE_SIZE = 1000
+
+          const limit = semaphore(MAX_PARALLEL_LIMIT)
+          const queue = []
+
+          for (const s3Prefix of s3Prefixes) {
+            if (queue.length >= MAX_QUEUE_SIZE) {
+              await Promise.all(queue.splice(0))
+            }
+
+            queue.push(
+              limit(() => {
+                this.deleteObject(bucket, s3Prefix.Key, undefined)
+              })
+            )
+          }
+
+          await Promise.all(queue)
+        } else throw reason
+      }
     } catch (e) {
       throw StorageBackendError.fromError(e)
     }
