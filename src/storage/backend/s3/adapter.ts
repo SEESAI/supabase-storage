@@ -348,8 +348,12 @@ export class S3Backend implements StorageBackendAdapter {
             }
 
             queue.push(
-              limit(() => {
-                this.deleteObject(bucket, s3Prefix.Key, undefined)
+              limit(async () => {
+                await this.deleteObject(bucket, s3Prefix.Key, undefined).catch((reason) => {
+                  if (reason instanceof S3ServiceException && reason.name === 'NoSuchKey') {
+                    // ok; the object doesn't exist so confirm it as deleted
+                  } else throw reason
+                })
               })
             )
           }
