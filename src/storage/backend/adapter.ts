@@ -239,6 +239,21 @@ export abstract class StorageBackendAdapter {
   }
 }
 
+export async function* paginateList(
+  this: StorageBackendAdapter,
+  ...args: Parameters<StorageBackendAdapter['list']>
+) {
+  const [bucketName, options] = args
+  let nextToken = options?.nextToken
+
+  do {
+    const page = await this.list(bucketName, { ...options, nextToken })
+    yield { keys: page.keys }
+
+    nextToken = page.nextToken
+  } while (nextToken)
+}
+
 const { tusUseFileVersionSeparator } = getConfig()
 
 export const PATH_SEPARATOR = '/'
