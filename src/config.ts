@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 import type { DBMigration } from '@internal/database/migrations'
 import { SignJWT } from 'jose'
 
-export type StorageBackendType = 'file' | 's3'
+export type StorageBackendType = 'file' | 'gcs' | 's3'
 export enum MultitenantMigrationStrategy {
   PROGRESSIVE = 'progressive',
   ON_REQUEST = 'on_request',
@@ -62,6 +62,7 @@ type StorageConfigType = {
   uploadFileSizeLimitStandard?: number
   storageFilePath?: string
   storageFileEtagAlgorithm: 'mtime' | 'md5'
+  storageGcsBucket: string
   storageS3MaxSockets: number
   storageS3Bucket: string
   storageS3Endpoint?: string
@@ -318,6 +319,9 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
       'FILE_STORAGE_BACKEND_PATH'
     ),
     storageFileEtagAlgorithm: getOptionalConfigFromEnv('STORAGE_FILE_ETAG_ALGORITHM') || 'md5',
+
+    // Storage - GCS
+    storageGcsBucket: getOptionalConfigFromEnv('STORAGE_GCS_BUCKET'),
 
     // Storage - S3
     storageS3MaxSockets: parseInt(
