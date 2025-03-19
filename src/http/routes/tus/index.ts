@@ -30,8 +30,11 @@ import { NodeHttpHandler } from '@smithy/node-http-handler'
 import { ROUTE_OPERATIONS } from '../operations'
 import * as https from 'node:https'
 import { createAgent } from '@internal/http'
+import { GCSStore } from '@seesai/tus-gcs-store'
+import { PostgresKvStore } from '@seesai/tus-gcs-store/kv-store'
 
 const {
+  storageGcsBucket,
   storageS3MaxSockets,
   storageS3Bucket,
   storageS3Endpoint,
@@ -61,6 +64,18 @@ type MultiPartRequest = http.IncomingMessage & {
 }
 
 function createTusStore(agent: { httpsAgent: https.Agent; httpAgent: http.Agent }) {
+  if (storageBackendType === 'gcs') {
+    return new GCSStore({
+      bucket: storageGcsBucket,
+      authConfig: {
+        // scope is required when impersonating a service account
+        scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+      },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      sessionStorage: new PostgresKvStore<any>(),
+    })
+  }
+
   if (storageBackendType === 's3') {
     return new S3Store({
       partSize: tusPartSize * 1024 * 1024, // Each uploaded part will have ${tusPartSize}MB,
