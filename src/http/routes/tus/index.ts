@@ -30,8 +30,7 @@ import { NodeHttpHandler } from '@smithy/node-http-handler'
 import { ROUTE_OPERATIONS } from '../operations'
 import * as https from 'node:https'
 import { createAgent } from '@internal/http'
-import { GCSStore } from '@seesai/tus-gcs-store'
-import { PostgresKvStore } from '@seesai/tus-gcs-store/kv-store'
+import { GCSStore, PostgresKvStore } from '@seesai/tus-gcs-store'
 
 const {
   storageGcsBucket,
