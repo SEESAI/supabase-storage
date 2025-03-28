@@ -7,6 +7,7 @@ import { PubSubAdapter } from '../pubsub'
 import { createMutexByKey } from '../concurrency'
 import { LRUCache } from 'lru-cache'
 import objectSizeOf from 'object-sizeof'
+import { base32, base64 } from '@internal/auth/base64'
 import { ERRORS } from '@internal/errors'
 import { DBMigration } from '@internal/database/migrations'
 
@@ -263,8 +264,8 @@ export async function createS3Credentials(
     throw ERRORS.MaximumCredentialsLimit()
   }
 
-  const secretAccessKeyId = crypto.randomBytes(32).toString('hex').slice(0, 32)
-  const secretAccessKey = crypto.randomBytes(64).toString('hex').slice(0, 64)
+  const secretAccessKeyId = 'SUPA' + base32.encode(crypto.randomBytes(10))
+  const secretAccessKey = base64.encode(crypto.randomBytes(30))
 
   if (data.claims) {
     delete data.claims.iss
