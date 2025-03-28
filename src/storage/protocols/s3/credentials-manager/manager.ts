@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { LRUCache } from 'lru-cache'
 import objectSizeOf from 'object-sizeof'
+import { base32, base64 } from '@internal/auth/base64'
 import { S3Credentials, S3CredentialsManagerStore, S3CredentialsRaw } from './store'
 import { createMutexByKey } from '@internal/concurrency'
 import { ERRORS } from '@internal/errors'
@@ -52,8 +53,8 @@ export class S3CredentialsManager {
       throw ERRORS.MaximumCredentialsLimit()
     }
 
-    const accessKey = crypto.randomBytes(32).toString('hex').slice(0, 32)
-    const secretKey = crypto.randomBytes(64).toString('hex').slice(0, 64)
+    const accessKey = 'SUPA' + base32.encode(crypto.randomBytes(10))
+    const secretKey = base64.encode(crypto.randomBytes(30))
 
     if (data.claims) {
       delete data.claims.iss
