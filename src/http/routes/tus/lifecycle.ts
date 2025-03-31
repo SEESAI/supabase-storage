@@ -94,8 +94,6 @@ export function generateUrl(
   if (!req.url) {
     throw ERRORS.InvalidParameter('url')
   }
-  proto = process.env.NODE_ENV === 'production' ? 'https' : proto
-
   let basePath = path
 
   const forwardedPath = req.headers['x-forwarded-prefix']
