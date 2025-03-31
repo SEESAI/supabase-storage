@@ -52,13 +52,13 @@ async function main() {
   // Migrations
   if (isMultitenant) {
     await runMultitenantMigrations()
-    await listenForTenantUpdate(PubSub)
   } else {
     await runMigrationsOnTenant({
       databaseUrl: databaseURL,
       upToMigration: dbMigrationFreezeAt,
     })
   }
+  await listenForTenantUpdate(PubSub)
 
   // Queue
   if (pgQueueEnable) {
