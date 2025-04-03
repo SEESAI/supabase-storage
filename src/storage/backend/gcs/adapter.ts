@@ -588,6 +588,19 @@ export class GCSBackend implements StorageBackendAdapter {
   protected buildMetadata(response: GaxiosResponse<unknown>): ObjectMetadata {
     const headers = new Headers(response.headers)
 
+    const hash = headers.get('X-Goog-Hash')
+    const hashes: Record<string, string> = {}
+
+    const matches = hash?.split(',').map((part) => {
+      return part.trim().match(/([^=]*)=([A-Za-z0-9+/]*=*)/)
+    })
+
+    if (matches) {
+      for (const match of matches) {
+        if (match) hashes[match[1]] = match[2]
+      }
+    }
+
     return {
       cacheControl: headers.get('Cache-Control') || 'no-cache',
       mimetype: headers.get('Content-Type') || 'application/octet-stream',
@@ -597,6 +610,8 @@ export class GCSBackend implements StorageBackendAdapter {
       contentLength: Number(headers.get('Content-Length')) || 0,
       size: Number(headers.get('Content-Length')) || 0,
       httpStatusCode: response.status,
+      crc32c: hashes.crc32c,
+      md5Hash: hashes.md5,
     }
   }
 }
