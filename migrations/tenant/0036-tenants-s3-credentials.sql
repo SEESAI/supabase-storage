@@ -35,12 +35,17 @@ END;
 $$
     LANGUAGE plpgsql;
 
-CREATE TRIGGER tenants_s3_credentials_update_notify_trigger
-    AFTER UPDATE ON tenants_s3_credentials
+CREATE OR REPLACE TRIGGER tenants_s3_credentials_insert_notify_trigger
+    AFTER INSERT ON tenants_s3_credentials
     FOR EACH ROW
 EXECUTE PROCEDURE tenants_s3_credentials_update_notify_trigger ();
 
-CREATE TRIGGER tenants_s3_credentials_delete_notify_trigger
+CREATE OR REPLACE TRIGGER tenants_s3_credentials_update_notify_trigger
+    AFTER UPDATE ON tenants_s3_credentials
+    FOR EACH ROW
+EXECUTE PROCEDURE tenants_s3_credentials_delete_notify_trigger ();
+
+CREATE OR REPLACE TRIGGER tenants_s3_credentials_delete_notify_trigger
     AFTER DELETE ON tenants_s3_credentials
     FOR EACH ROW
 EXECUTE PROCEDURE tenants_s3_credentials_delete_notify_trigger ();
