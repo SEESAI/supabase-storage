@@ -27,7 +27,7 @@ import type { ServerRequest as Request } from 'srvx'
 import { S3Locker } from '@storage/protocols/tus/s3-locker'
 import { S3Client } from '@aws-sdk/client-s3'
 import { ERRORS } from '@internal/errors'
-import { GCSStore, PostgresKvStore } from '@seesai/tus-gcs-store'
+import { GCSStore, PostgresKvStore } from '@sees.ai/tus-gcs-store'
 
 const {
   storageGcsBucket,
