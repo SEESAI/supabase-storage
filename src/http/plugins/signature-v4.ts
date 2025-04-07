@@ -204,7 +204,8 @@ async function createServerSignature(tenantId: string, clientSignature: ClientSi
 
     return { signature, claims: credential.claims, token: undefined }
   } catch (e) {
-    if (e instanceof StorageBackendError && e.code === ErrorCode.S3InvalidAccessKeyId) {
+    const UNDEFINED_TABLE = '42P01' // https://www.postgresql.org/docs/current/errcodes-appendix.html
+    if (e !== null && typeof e === 'object' && 'code' in e && e.code === UNDEFINED_TABLE) {
       if (isMultitenant) throw e // if not multitenant then do nothing and fallthrough to environment variables below
     } else throw e
   }
