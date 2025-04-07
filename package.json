@@ -42,7 +42,7 @@
     "@opentelemetry/instrumentation-http": "^0.53.0",
     "@opentelemetry/instrumentation-knex": "^0.40.0",
     "@opentelemetry/instrumentation-pg": "^0.44.0",
-    "@seesai/tus-gcs-store": "^0.1.0",
+    "@sees.ai/tus-gcs-store": "^0.1.0",
     "@shopify/semaphore": "^3.0.2",
     "@smithy/node-http-handler": "^2.3.1",
     "@tus/file-store": "1.4.0",
