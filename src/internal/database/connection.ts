@@ -29,7 +29,6 @@ interface TenantConnectionOptions {
   tenantId: string
   dbUrl: string
   isExternalPool?: boolean
-  idleTimeoutMillis?: number
   maxConnections: number
   headers?: Record<string, string | undefined | string[]>
   method?: string
@@ -42,13 +41,10 @@ export interface User {
   payload: { role?: string } & JwtPayload
 }
 
-const multiTenantLRUConfig = {
-  ttl: 1000 * 10,
-  updateAgeOnGet: true,
-  checkAgeOnGet: true,
-}
 export const connections = new TTLCache<string, Knex>({
-  ...(isMultitenant ? multiTenantLRUConfig : { max: 1, ttl: Infinity }),
+  ttl: databaseFreePoolAfterInactivity,
+  updateAgeOnGet: true,
+
   dispose: async (pool) => {
     if (!pool) return
     try {
@@ -101,13 +97,9 @@ export class TenantConnection {
       searchPath: isExternalPool ? undefined : searchPath,
       pool: {
         min: 0,
-        max: isExternalPool
-          ? options.maxConnections || 1
-          : options.maxConnections || databaseMaxConnections,
+        max: options.maxConnections || databaseMaxConnections,
         acquireTimeoutMillis: databaseConnectionTimeout,
-        idleTimeoutMillis: isExternalPool
-          ? options.idleTimeoutMillis || 100
-          : databaseFreePoolAfterInactivity,
+        idleTimeoutMillis: isExternalPool ? 100 : databaseFreePoolAfterInactivity,
         reapIntervalMillis: isExternalPool ? 50 : undefined,
       },
       connection: {
@@ -136,7 +128,7 @@ export class TenantConnection {
       DbActivePool.dec({ is_external: isExternalPool.toString() })
     })
 
-    if (!isExternalPool) {
+    if (!isExternalPool || !isMultitenant) {
       connections.set(connectionString, knexPool)
     }
 
@@ -151,7 +143,7 @@ export class TenantConnection {
   }
 
   async dispose() {
-    if (this.options.isExternalPool) {
+    if (this.options.isExternalPool && isMultitenant) {
       await this.pool.destroy()
     }
   }
