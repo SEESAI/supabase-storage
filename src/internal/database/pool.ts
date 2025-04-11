@@ -26,8 +26,6 @@ export interface TenantConnectionOptions {
   dbUrl: string
   isExternalPool?: boolean
   isSingleUse?: boolean
-  idleTimeoutMillis?: number
-  reapIntervalMillis?: number
   maxConnections: number
   clusterSize?: number
   headers?: Record<string, string | undefined | string[]>
@@ -51,14 +49,10 @@ export const searchPath = ['storage', 'public', 'extensions', ...dbSearchPath.sp
   Boolean
 )
 
-const multiTenantLRUConfig = {
-  ttl: 1000 * 10,
-  updateAgeOnGet: true,
-  checkAgeOnGet: true,
-}
-
 const tenantPools = new TTLCache<string, PoolStrategy>({
-  ...(isMultitenant ? multiTenantLRUConfig : { max: 1, ttl: Infinity }),
+  ttl: databaseFreePoolAfterInactivity,
+  updateAgeOnGet: true,
+
   dispose: async (pool) => {
     if (!pool) return
     try {
@@ -121,7 +115,7 @@ export class PoolManager {
 
     const newPool = this.newPool(settings)
 
-    if ((settings.isSingleUse && !settings.isExternalPool) || !settings.isSingleUse) {
+    if (!settings.isExternalPool || !settings.isSingleUse || true) {
       tenantPools.set(settings.tenantId, newPool)
     }
     return newPool
@@ -186,10 +180,6 @@ class TenantPool implements PoolStrategy {
       maxConnection = Math.ceil(maxConnection / clusterSize)
     }
 
-    if (isSingleUseExternalPool) {
-      maxConnection = 1
-    }
-
     return {
       ...this.options,
       searchPath: this.options.isExternalPool ? undefined : searchPath,
@@ -251,7 +241,7 @@ class TenantPool implements PoolStrategy {
         max: maxConnections,
         acquireTimeoutMillis: databaseConnectionTimeout,
         idleTimeoutMillis: settings.idleTimeoutMillis,
-        reapIntervalMillis: 1000,
+        reapIntervalMillis: settings.reapIntervalMillis,
       },
       connection: {
         connectionString: settings.dbUrl,
