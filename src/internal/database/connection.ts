@@ -34,7 +34,7 @@ export class TenantConnection {
   }
 
   dispose() {
-    if (this.options.isSingleUse && this.options.isExternalPool) {
+    if (this.options.isSingleUse && this.options.isExternalPool && false) {
       return this.pool.destroy()
     }
 
