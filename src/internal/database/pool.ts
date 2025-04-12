@@ -6,6 +6,7 @@ import { getSslSettings } from '@internal/database/util'
 import { wait } from '@internal/concurrency'
 import { JWTPayload } from 'jose'
 import { DbActivePool } from '@internal/monitoring/metrics'
+import { nextTick } from 'node:process'
 
 const {
   region,
@@ -115,8 +116,51 @@ export class PoolManager {
 
     const newPool = this.newPool(settings)
 
-    if (!settings.isExternalPool || !settings.isSingleUse || true) {
+    if (!settings.isExternalPool || !settings.isSingleUse) {
       tenantPools.set(settings.tenantId, newPool)
+    }
+    if (settings.isExternalPool && settings.isSingleUse) {
+      tenantPools.set(settings.tenantId, newPool)
+
+      // @ts-expect-error -- HACK: protected property
+      const knexPool = newPool.pool!
+
+      // HACK: tarn.js validates this value is non-zero so cannot be set in the initialization
+      // options and must be overwritten afterwards instead.
+      knexPool.client.pool.idleTimeoutMillis = 0
+
+      // HACK: the reap interval cannot be disabled so we set it to the maximum possible value
+      // instead. Note that the delay argument is converted to a signed 32-bit integer so
+      // larger (or potentially infinite) values will not work as expected.
+      knexPool.client.pool.reapIntervalMillis = 2_147_483_647 // MAX_INT32
+
+      // HACK: try to release idle resources immediately. Run the check in the next process tick
+      // as this handler runs immediately before resources are actually released.
+      knexPool.client.pool.on('release', () => {
+        nextTick(() => knexPool.client.pool.check())
+      })
+
+      // HACK: tarn.js tries to immediately reacquire released resources which prevents them from
+      // being released to the external pool. This is the internal function but modified to run
+      // the reacquisition attempt in the next process tick which gives the above event listener
+      // time to run the idle resource check.
+      knexPool.client.pool.release = function release(resource: unknown) {
+        this._executeEventHandlers('release', resource)
+
+        for (let i = 0, l = this.used.length; i < l; ++i) {
+          const used = this.used[i]
+
+          if (used.resource === resource) {
+            this.used.splice(i, 1)
+            this.free.push(used.resolve())
+
+            nextTick(() => this._tryAcquireOrCreate())
+            return true
+          }
+        }
+
+        return false
+      }
     }
     return newPool
   }
