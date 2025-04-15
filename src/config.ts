@@ -185,6 +185,7 @@ type StorageConfigType = {
   icebergBucketDetectionSuffix: string
   icebergBucketDetectionMode: 'BUCKET' | 'FULL_PATH'
   icebergS3DeleteEnabled: boolean
+  allowUnsafeKeyCharacters: boolean
 }
 
 function getOptionalConfigFromEnv(key: string, fallback?: string): string | undefined {
@@ -524,6 +525,9 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     ),
     icebergMaxTableCount: parseInt(getOptionalConfigFromEnv('ICEBERG_MAX_TABLES') || '10', 10),
     icebergS3DeleteEnabled: getOptionalConfigFromEnv('ICEBERG_S3_DELETE_ENABLED') === 'true',
+
+    // Extensions
+    allowUnsafeKeyCharacters: getOptionalConfigFromEnv('ALLOW_UNSAFE_KEY_CHARACTERS') === 'true',
   } as StorageConfigType
 
   const serviceKey = getOptionalConfigFromEnv('SERVICE_KEY') || ''
