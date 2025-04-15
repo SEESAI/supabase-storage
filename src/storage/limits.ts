@@ -5,7 +5,12 @@ import {
 } from '../internal/database/tenant'
 import { ERRORS } from '../internal/errors'
 
-const { isMultitenant, imageTransformationEnabled, icebergBucketDetectionSuffix } = getConfig()
+const {
+  allowUnsafeKeyCharacters,
+  isMultitenant,
+  imageTransformationEnabled,
+  icebergBucketDetectionSuffix,
+} = getConfig()
 
 export type BucketType = 'STANDARD' | 'ANALYTICS'
 
@@ -52,6 +57,8 @@ export async function isImageTransformationEnabled(tenantId: string) {
  * @param key
  */
 export function isValidKey(key: string): boolean {
+  if (allowUnsafeKeyCharacters) return key.length > 0
+
   // only allow s3 safe characters and characters which require special handling for now
   // https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html
   return key.length > 0 && /^(\w|\/|!|-|\.|\*|'|\(|\)| |&|\$|@|=|;|:|\+|,|\?)*$/.test(key)
@@ -62,6 +69,8 @@ export function isValidKey(key: string): boolean {
  * @param bucketName
  */
 export function isValidBucketName(bucketName: string): boolean {
+  if (allowUnsafeKeyCharacters) return bucketName.length > 0 && !bucketName.includes('/')
+
   // only allow s3 safe characters and characters which require special handling for now
   // the slash restriction come from bucket naming rules
   // and the rest of the validation rules are based on S3 object key validation.
