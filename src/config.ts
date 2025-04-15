@@ -173,6 +173,7 @@ type StorageConfigType = {
   }
   cdnPurgeEndpointURL?: string
   cdnPurgeEndpointKey?: string
+  allowUnsafeKeyCharacters: boolean
 }
 
 function getOptionalConfigFromEnv(key: string, fallback?: string): string | undefined {
@@ -493,6 +494,9 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
       getOptionalConfigFromEnv('RATE_LIMITER_REDIS_COMMAND_TIMEOUT') || '2',
       10
     ),
+
+    // Extensions
+    allowUnsafeKeyCharacters: getOptionalConfigFromEnv('ALLOW_UNSAFE_KEY_CHARACTERS') === 'true',
   } as StorageConfigType
 
   const serviceKey = getOptionalConfigFromEnv('SERVICE_KEY') || ''
