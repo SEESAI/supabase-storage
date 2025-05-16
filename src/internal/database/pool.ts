@@ -116,7 +116,7 @@ export class PoolManager {
 
     const newPool = this.newPool(settings)
 
-    if (!settings.isExternalPool || !settings.isSingleUse) {
+    if ((settings.isSingleUse && !settings.isExternalPool) || !settings.isSingleUse) {
       tenantPools.set(settings.tenantId, newPool)
     }
     if (settings.isExternalPool && settings.isSingleUse) {
