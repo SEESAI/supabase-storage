@@ -32,4 +32,4 @@ EXPOSE 5000
 
 USER node
 
-CMD ["node", "dist/start/server.js"]
+CMD ["dist/start/server.js"]
