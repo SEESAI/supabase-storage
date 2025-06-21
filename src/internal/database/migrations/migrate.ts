@@ -583,7 +583,7 @@ function runMigrations({
 
     try {
       const migrationTableName = 'migrations'
-      const migrationTableSchema = searchPath[0]
+      const migrationTableSchema = 'storage'
 
       await client.query(`SET search_path TO ${searchPath.join(',')}`)
 
@@ -605,9 +605,9 @@ function runMigrations({
           )
         }
       } else if (shouldCreateStorageSchema) {
-        const schemaExists = await doesSchemaExists(client, 'storage')
+        const schemaExists = await doesSchemaExists(client, migrationTableSchema)
         if (!schemaExists) {
-          await client.query(`CREATE SCHEMA IF NOT EXISTS storage`)
+          await client.query(SQL`CREATE SCHEMA IF NOT EXISTS ${migrationTableSchema}`)
         }
       }
 
@@ -698,12 +698,13 @@ async function getDefaultAccessMethod(client: BasicPgClient): Promise<string> {
  * Checks if a table exists
  * @param client
  * @param tableName
+ * @param schemaName
  */
-async function doesTableExist(client: BasicPgClient, tableName: string, tableSchema: string) {
+async function doesTableExist(client: BasicPgClient, tableName: string, schemaName: string) {
   const result = await client.query(SQL`SELECT EXISTS (
   SELECT 1
   FROM information_schema.tables
-  WHERE table_schema = ${tableSchema}
+  WHERE table_schema = ${schemaName}
   AND table_name = ${tableName}
 );`)
 
@@ -722,7 +723,7 @@ async function doesSchemaExists(client: BasicPgClient, schemaName: string) {
       WHERE schema_name = ${schemaName}
   );`)
 
-  return result.rows.length > 0 && result.rows[0].exists === 'true'
+  return result.rows.length > 0 && result.rows[0].exists
 }
 
 /**
