@@ -345,49 +345,6 @@ export async function runMigrationsOnTenant({
     waitForLock,
     upToMigration,
   })
-
-  {
-    // hack? additional migrations after forking
-
-    const client = new Client({
-      connectionString: databaseUrl,
-    })
-
-    const migrations = await loadMigrationFiles('./migrations/tenant-extra')
-    const migrationTableName = 'migrations_extra'
-
-    // skip the first migration which creates the default migrations table. We create the
-    // required table as the first user-supplied migration.
-    // https://www.npmjs.com/package/postgres-migrations#the-migrations-table
-    migrations.splice(0, 1)
-
-    const migrate = withAdvisoryLock(waitForLock, async (client) => {
-      const run = runMigration(migrationTableName, client)
-
-      const result = await client.query(`SELECT * FROM ${migrationTableName} ORDER BY id ASC`)
-      const appliedMigrations = result.rows
-
-      for (const i in appliedMigrations) {
-        if (migrations[i].hash !== appliedMigrations[i].hash) {
-          throw new Error(
-            `Hash doesn't match for migration '${migrations[i].fileName}'. This means that the script has changed since it was applied.`
-          )
-        }
-      }
-
-      for (const migration of migrations.slice(appliedMigrations.length)) {
-        if (appliedMigrations) await run(migration)
-      }
-    })
-
-    try {
-      await client.connect()
-      await client.query(`SET search_path TO ${searchPath.join(',')}`)
-      await migrate(client)
-    } finally {
-      await client.end()
-    }
-  }
 }
 
 export async function resetMigration(options: {
@@ -638,11 +595,12 @@ function runMigrations({
 
     try {
       const migrationTableName = 'migrations'
+      const migrationTableSchema = searchPath[0]
 
       await client.query(`SET search_path TO ${searchPath.join(',')}`)
 
       let appliedMigrations: Migration[] = []
-      if (await doesTableExist(client, migrationTableName)) {
+      if (await doesTableExist(client, migrationTableName, migrationTableSchema)) {
         const selectQueryCurrentMigration = SQL`SELECT * FROM `
           .append(migrationTableName)
           .append(SQL` WHERE id <= ${lastMigrationId}`)
@@ -754,12 +712,12 @@ async function getDefaultAccessMethod(client: BasicPgClient): Promise<string> {
  * @param client
  * @param tableName
  */
-async function doesTableExist(client: BasicPgClient, tableName: string) {
+async function doesTableExist(client: BasicPgClient, tableName: string, tableSchema: string) {
   const result = await client.query(SQL`SELECT EXISTS (
   SELECT 1
-  FROM   pg_catalog.pg_class c
-  WHERE  c.relname = ${tableName}
-  AND    c.relkind = 'r'
+  FROM information_schema.tables
+  WHERE table_schema = ${tableSchema}
+  AND table_name = ${tableName}
 );`)
 
   return result.rows.length > 0 && result.rows[0].exists
