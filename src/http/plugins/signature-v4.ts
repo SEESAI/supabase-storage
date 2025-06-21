@@ -3,7 +3,7 @@ import fastifyPlugin from 'fastify-plugin'
 import { getJwtSecret, getTenantConfig, s3CredentialsManager } from '@internal/database'
 import { ClientSignature, SignatureV4 } from '@storage/protocols/s3'
 import { signJWT, verifyJWT } from '@internal/auth'
-import { ErrorCode, ERRORS, StorageBackendError } from '@internal/errors'
+import { ERRORS } from '@internal/errors'
 
 import { getConfig } from '../../config'
 import { MultipartFile, MultipartValue } from '@fastify/multipart'
@@ -184,7 +184,7 @@ async function createServerSignature(tenantId: string, clientSignature: ClientSi
     return { signature, claims: undefined, token: clientSignature.sessionToken }
   }
 
-  try {
+  if (isMultitenant) {
     const credential = await s3CredentialsManager.getS3CredentialsByAccessKey(
       tenantId,
       clientSignature.credentials.accessKey
@@ -203,11 +203,6 @@ async function createServerSignature(tenantId: string, clientSignature: ClientSi
     })
 
     return { signature, claims: credential.claims, token: undefined }
-  } catch (e) {
-    const UNDEFINED_TABLE = '42P01' // https://www.postgresql.org/docs/current/errcodes-appendix.html
-    if (e !== null && typeof e === 'object' && 'code' in e && e.code === UNDEFINED_TABLE) {
-      if (isMultitenant) throw e // if not multitenant then do nothing and fallthrough to environment variables below
-    } else throw e
   }
 
   if (!s3ProtocolAccessKeyId || !s3ProtocolAccessKeySecret) {

@@ -12,19 +12,25 @@ export * from './adapter'
 const { storageS3Region, storageS3Endpoint, storageS3ForcePathStyle, storageS3ClientTimeout } =
   getConfig()
 
-type ConfigForStorage = {
-  s3: S3ClientOptions
-  gcs: GCSClientOptions
-  file: undefined
-}
+type ConfigForStorage<Type extends StorageBackendType> = Type extends 'file'
+  ? undefined
+  : Type extends 'gcs'
+  ? GCSClientOptions
+  : S3ClientOptions
 
-type Args = {
-  [Type in StorageBackendType]: [Type] | [Type, ConfigForStorage[Type]]
-}[StorageBackendType]
+export function createStorageBackend<Type extends StorageBackendType>(
+  ...[type, config]: Type extends infer T
+    ? T extends Type
+      ? [type: T, config: ConfigForStorage<T>]
+      : never
+    : never
+) {
+  let storageBackend: StorageBackendAdapter
 
-export function createStorageBackend(...[storageBackendType, config]: Args) {
-  if (storageBackendType === 'gcs') {
-    return new GCSBackend({
+  if (type === 'file') {
+    storageBackend = new FileBackend()
+  } else if (type === 'gcs') {
+    storageBackend = new GCSBackend({
       authConfig: {
         // scope is required when impersonating a service account
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],
@@ -32,9 +38,7 @@ export function createStorageBackend(...[storageBackendType, config]: Args) {
       },
       ...config,
     })
-  }
-
-  if (storageBackendType === 's3') {
+  } else {
     const defaultOptions: S3ClientOptions = {
       region: storageS3Region,
       endpoint: storageS3Endpoint,
@@ -42,8 +46,8 @@ export function createStorageBackend(...[storageBackendType, config]: Args) {
       requestTimeout: storageS3ClientTimeout,
       ...(config ? config : {}),
     }
-    return new S3Backend(defaultOptions)
+    storageBackend = new S3Backend(defaultOptions)
   }
 
-  return new FileBackend()
+  return storageBackend
 }
