@@ -56,6 +56,8 @@ export class S3CredentialsManager {
     const accessKey = 'SUPA' + base32.encode(crypto.randomBytes(10))
     const secretKey = base64.encode(crypto.randomBytes(30))
 
+    const now = Math.floor(Date.now() / 1000)
+
     if (data.claims) {
       delete data.claims.iss
       delete data.claims.issuer
@@ -66,8 +68,9 @@ export class S3CredentialsManager {
     const claims = {
       ...(data.claims || {}),
       role: data.claims?.role ?? this.dbServiceRole,
-      issuer: `supabase.storage.${tenantId}`,
+      iss: `${tenantId}.supabase.co/storage/v1`,
       sub: data.claims?.sub,
+      iat: now,
     }
 
     const id = await this.storage.insert(tenantId, {
