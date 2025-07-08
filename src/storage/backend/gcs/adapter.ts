@@ -142,6 +142,18 @@ export class GCSBackend implements StorageBackendAdapter {
         Range: headers?.range,
       },
 
+      validateStatus(status) {
+        if (200 <= status && status < 300) {
+          return true // default behavior
+        }
+
+        if (status === 304) {
+          return true // Not Modified
+        }
+
+        return false
+      },
+
       responseType: 'stream',
 
       retry: this.retry,
