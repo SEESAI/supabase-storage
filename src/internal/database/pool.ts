@@ -122,8 +122,7 @@ export class PoolManager {
     if (settings.isSingleUse && settings.isExternalPool) {
       tenantPools.set(settings.tenantId, newPool)
 
-      // @ts-expect-error -- HACK: protected property
-      const knexPool = newPool.pool!
+      const knexPool = newPool.acquire()
 
       // HACK: tarn.js validates this value is non-zero so cannot be set in the initialization
       // options and must be overwritten afterwards instead.
