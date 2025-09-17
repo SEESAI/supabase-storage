@@ -11,7 +11,8 @@ import type { ServerRequest as Request } from 'srvx'
 
 import { getConfig } from '../../../config'
 
-const { storageS3Bucket, tusPath, requestAllowXForwardedPrefix } = getConfig()
+const { storageS3Bucket, tusPath, requestAllowXForwardedPrefix, s3ProtocolNonCanonicalHostHeader } =
+  getConfig()
 const reExtractFileID = /([^/]+)\/?$/
 
 export const SIGNED_URL_SUFFIX = '/sign'
@@ -139,6 +140,21 @@ export function generateUrl(
       } else {
         host = host.replace(/:\d+$/, `:${req.headers['x-forwarded-port']}`)
       }
+    }
+  }
+
+  function getHeader(request: MultiPartRequest, name: string) {
+    const item = request.headers[name]
+    if (Array.isArray(item)) {
+      return item.join(',')
+    }
+    return item
+  }
+
+  if (s3ProtocolNonCanonicalHostHeader) {
+    const xForwardedHost = getHeader(req, s3ProtocolNonCanonicalHostHeader.toLowerCase())
+    if (xForwardedHost) {
+      host = xForwardedHost.toLowerCase()
     }
   }
 
