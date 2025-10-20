@@ -437,7 +437,7 @@ export class GCSBackend implements StorageBackendAdapter {
     }
 
     return {
-      ETag: response.headers['ETag'],
+      ETag: response.headers['etag'],
     }
   }
 
