@@ -2,18 +2,17 @@ import { Readable } from 'node:stream'
 import { URLSearchParams } from 'node:url'
 
 import { XMLBuilder, XMLParser } from 'fast-xml-parser'
-import { GoogleAuth, GoogleAuthOptions } from 'google-auth-library'
 import { type GaxiosResponse, type RetryConfig } from 'gaxios'
+import { GoogleAuth, GoogleAuthOptions } from 'google-auth-library'
 import semaphore from 'p-limit'
 
 import {
   BrowserCacheHeaders,
   ObjectMetadata,
   ObjectResponse,
-  paginateList,
   StorageBackendAdapter,
   UploadPart,
-  withOptionalVersion,
+  withOptionalVersion
 } from '../adapter'
 import { getSignedUrl } from './signer'
 
@@ -137,9 +136,9 @@ export class GCSBackend implements StorageBackendAdapter {
       url,
 
       headers: {
-        'If-Modified-Since': headers?.ifModifiedSince,
-        'If-None-Match': headers?.ifNoneMatch,
-        Range: headers?.range,
+        'if-modified-since': headers?.ifModifiedSince,
+        'if-none-match': headers?.ifNoneMatch,
+        range: headers?.range,
       },
 
       responseType: 'stream',
@@ -186,8 +185,8 @@ export class GCSBackend implements StorageBackendAdapter {
       url,
 
       headers: {
-        'Cache-Control': cacheControl,
-        'Content-Type': contentType,
+        'cache-control': cacheControl,
+        'content-type': contentType,
       },
 
       retry: this.retry,
@@ -259,14 +258,14 @@ export class GCSBackend implements StorageBackendAdapter {
       url,
 
       headers: {
-        'Cache-Control': metadata?.cacheControl,
-        'Content-Type': metadata?.mimetype,
-        'X-Goog-Copy-Source': copySource,
-        'X-Goog-Copy-Source-If-Match': conditions?.ifMatch,
-        'X-Goog-Copy-Source-If-None-Match': conditions?.ifNoneMatch,
-        'X-Goog-Copy-Source-If-Unmodified-Since': conditions?.ifUnmodifiedSince?.toUTCString(),
-        'X-Goog-Copy-Source-If-Modified-Since': conditions?.ifModifiedSince?.toUTCString(),
-        'X-Goog-Metadata-Directive': objectName !== copySource ? 'COPY' : 'REPLACE',
+        'cache-control': metadata?.cacheControl,
+        'content-type': metadata?.mimetype,
+        'x-goog-copy-source': copySource,
+        'x-goog-copy-source-if-match': conditions?.ifMatch,
+        'x-goog-copy-source-if-none-match': conditions?.ifNoneMatch,
+        'x-goog-copy-source-if-unmodified-since': conditions?.ifUnmodifiedSince?.toUTCString(),
+        'x-goog-copy-source-if-modified-since': conditions?.ifModifiedSince?.toUTCString(),
+        'x-goog-metadata-directive': objectName !== copySource ? 'COPY' : 'REPLACE',
       },
 
       retry: this.retry,
@@ -377,8 +376,8 @@ export class GCSBackend implements StorageBackendAdapter {
       url,
 
       headers: {
-        'Cache-Control': cacheControl,
-        'Content-Type': contentType,
+        'cache-control': cacheControl,
+        'content-type': contentType,
       },
 
       responseType: 'text',
@@ -425,7 +424,7 @@ export class GCSBackend implements StorageBackendAdapter {
       url,
 
       headers: {
-        'Content-Length': length,
+        'content-length': length,
       },
 
       retry: this.retry,
@@ -535,13 +534,13 @@ export class GCSBackend implements StorageBackendAdapter {
     const controller = new AbortController()
     const signal = controller.signal
 
-    const request = await this.client.request({
+    const response = await this.client.request({
       method: 'GET',
       url: copyUrl,
       signal,
 
       headers: {
-        Range: range,
+        range: range,
       },
 
       responseType: 'stream',
@@ -550,8 +549,8 @@ export class GCSBackend implements StorageBackendAdapter {
       retryConfig: this.retryConfig,
     })
 
-    const body = request.data
-    const length = request.headers['Content-Length']
+    const body = response.data
+    const length = response.headers['content-length']
 
     try {
       const response = await this.client.request({
@@ -560,7 +559,7 @@ export class GCSBackend implements StorageBackendAdapter {
         url,
 
         headers: {
-          'Content-Length': length,
+          'content-length': length,
         },
 
         retry: this.retry,
@@ -572,8 +571,8 @@ export class GCSBackend implements StorageBackendAdapter {
       }
 
       return {
-        eTag: response.headers['ETag'],
-        lastModified: response.headers['Last-Modified'],
+        eTag: response.headers['etag'],
+        lastModified: response.headers['last-modified'],
       }
     } catch (reason) {
       controller.abort(reason)
@@ -586,29 +585,29 @@ export class GCSBackend implements StorageBackendAdapter {
   }
 
   protected buildMetadata(response: GaxiosResponse<unknown>): ObjectMetadata {
-    const headers = new Headers(response.headers)
-
-    const hash = headers.get('X-Goog-Hash')
+    const hash = response.headers['x-goog-hash']
     const hashes: Record<string, string> = {}
 
-    const matches = hash?.split(',').map((part) => {
-      return part.trim().match(/([^=]*)=([A-Za-z0-9+/]*=*)/)
-    })
+    if (typeof hash === "string") {
+      const matches = hash?.split(',').map((part) => {
+        return part.trim().match(/([^=]*)=([A-Za-z0-9+/]*=*)/)
+      })
 
-    if (matches) {
-      for (const match of matches) {
-        if (match) hashes[match[1]] = match[2]
+      if (matches) {
+        for (const match of matches) {
+          if (match) hashes[match[1]] = match[2]
+        }
       }
     }
 
     return {
-      cacheControl: headers.get('Cache-Control') || 'no-cache',
-      mimetype: headers.get('Content-Type') || 'application/octet-stream',
-      eTag: headers.get('ETag') || '',
-      lastModified: dateify(headers.get('Last-Modified')),
-      contentRange: headers.get('Range') ?? undefined,
-      contentLength: Number(headers.get('Content-Length')) || 0,
-      size: Number(headers.get('Content-Length')) || 0,
+      cacheControl: response.headers['cache-control'] || 'no-cache',
+      mimetype: response.headers['content-type'] || 'application/octet-stream',
+      eTag: response.headers['etag'] || '',
+      lastModified: dateify(response.headers['last-modified']),
+      contentRange: response.headers['range'] ?? undefined,
+      contentLength: Number(response.headers['content-length']) || 0,
+      size: Number(response.headers['content-length']) || 0,
       httpStatusCode: response.status,
       crc32c: hashes.crc32c,
       md5Hash: hashes.md5,
