@@ -30,7 +30,6 @@ import { ERRORS } from '@internal/errors'
 import { GCSStore, PostgresKvStore } from '@sees.ai/tus-gcs-store'
 
 const {
-  storageGcsBucket,
   storageS3MaxSockets,
   storageS3Bucket,
   storageS3Endpoint,
@@ -63,7 +62,7 @@ type MultiPartRequest = http.IncomingMessage & {
 function createTusStore(agent: { httpsAgent: https.Agent; httpAgent: http.Agent }) {
   if (storageBackendType === 'gcs') {
     return new GCSStore({
-      bucket: storageGcsBucket,
+      bucket: storageS3Bucket,
       authConfig: {
         // scope is required when impersonating a service account
         scopes: ['https://www.googleapis.com/auth/cloud-platform'],

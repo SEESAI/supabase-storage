@@ -63,7 +63,6 @@ type StorageConfigType = {
   uploadFileSizeLimitStandard?: number
   storageFilePath?: string
   storageFileEtagAlgorithm: 'mtime' | 'md5'
-  storageGcsBucket: string
   storageS3MaxSockets: number
   storageS3Bucket: string
   storageS3Endpoint?: string
@@ -339,9 +338,6 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
     ),
     storageFileEtagAlgorithm: getOptionalConfigFromEnv('STORAGE_FILE_ETAG_ALGORITHM') || 'md5',
 
-    // Storage - GCS
-    storageGcsBucket: getOptionalConfigFromEnv('STORAGE_GCS_BUCKET'),
-
     // Storage - S3
     storageS3MaxSockets: parseInt(
       getOptionalConfigFromEnv('STORAGE_S3_MAX_SOCKETS', 'GLOBAL_S3_MAX_SOCKETS') || '200',
@@ -563,6 +559,16 @@ export function getConfig(options?: { reload?: boolean }): StorageConfigType {
       config.jwtJWKS = JSON.parse(jwtJWKS)
     } catch {
       throw new Error('Unable to parse JWT_JWKS value to JSON')
+    }
+  }
+
+  const storageGcsBucket = getOptionalConfigFromEnv('STORAGE_GCS_BUCKET')
+
+  if (storageGcsBucket) {
+    if (!config.storageS3Bucket) {
+      config.storageS3Bucket = storageGcsBucket
+    } else {
+      throw new Error('Bucket already configured')
     }
   }
 
