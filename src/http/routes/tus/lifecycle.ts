@@ -297,6 +297,7 @@ export async function onUploadFinish(rawReq: Request, upload: Upload) {
     return {
       headers: {
         'Tus-Complete': '1',
+        'Upload-Checksum': metadata.crc32c ? `crc32c ${metadata.crc32c}` : '',
       },
     }
   } catch (e) {
